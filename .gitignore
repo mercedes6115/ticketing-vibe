@@ -1,0 +1,40 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# ===== Frontend =====
+frontend/node_modules/
+frontend/dist/
+frontend/.cache/
+frontend/*.local
+
+# ===== Backend =====
+backend/build/
+backend/.gradle/
+backend/bin/
+backend/out/
+
+# Gradle
+.gradle/
+**/build/
+!src/**/build/
+
+# Maven (if used)
+target/
+
+# Test
+backend/src/test/resources/application-test.yml

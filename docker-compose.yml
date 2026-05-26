@@ -1,0 +1,289 @@
+services:
+  #############################################################################
+  #                              Applications                                 #
+  #############################################################################
+  backend:
+    container_name: ticketing-backend
+    image: gradle:8.7-jdk17-alpine
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend:/opt/app
+      - gradle_cache:/home/gradle/.gradle
+    working_dir: /opt/app
+    command: sh -c "gradle bootRun --no-daemon"
+    environment:
+      - SPRING_PROFILES_ACTIVE=local
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/ticketing?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=ticketing
+      - SPRING_DATASOURCE_PASSWORD=ticketing1234
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - JWT_SECRET=${JWT_SECRET:-local-dev-secret-change-in-production-must-be-long}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis-sentinel-1:
+        condition: service_healthy
+      redis-sentinel-2:
+        condition: service_healthy
+      redis-sentinel-3:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - ticketing-network
+
+  frontend:
+    container_name: ticketing-frontend
+    image: node:20-alpine
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/opt/app
+    working_dir: /opt/app
+    command: sh -c "npm install && npm run dev -- --host"
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:8080
+    depends_on:
+      - backend
+    networks:
+      - ticketing-network
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: ticketing-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=7d'
+    depends_on:
+      - backend
+    networks:
+      - ticketing-network
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: ticketing-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/dashboard-json:/var/lib/grafana/dashboards:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      - prometheus
+    networks:
+      - ticketing-network
+
+  #############################################################################
+  #                            Infrastructures                                #
+  #############################################################################
+  mysql:
+    image: mysql:8.0
+    container_name: ticketing-mysql
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root1234
+      MYSQL_DATABASE: ticketing
+      MYSQL_USER: ticketing
+      MYSQL_PASSWORD: ticketing1234
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ticketing-network
+
+  redis-master:
+    image: redis:7-alpine
+    container_name: ticketing-redis-master
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_master_data:/data
+    command: redis-server --appendonly yes --notify-keyspace-events Ex
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ticketing-network
+
+  redis-replica-1:
+    image: redis:7-alpine
+    container_name: ticketing-redis-replica-1
+    volumes:
+      - redis_replica1_data:/data
+    command: redis-server --replicaof redis-master 6379 --notify-keyspace-events Ex
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ticketing-network
+
+  redis-replica-2:
+    image: redis:7-alpine
+    container_name: ticketing-redis-replica-2
+    volumes:
+      - redis_replica2_data:/data
+    command: redis-server --replicaof redis-master 6379 --notify-keyspace-events Ex
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ticketing-network
+
+  redis-sentinel-1:
+    image: redis:7-alpine
+    container_name: ticketing-redis-sentinel-1
+    ports:
+      - "26379:26379"
+    command:
+      - sh
+      - -c
+      - >
+        printf '%s\n'
+        'port 26379'
+        'sentinel monitor mymaster redis-master 6379 2'
+        'sentinel down-after-milliseconds mymaster 5000'
+        'sentinel failover-timeout mymaster 60000'
+        'sentinel parallel-syncs mymaster 1'
+        'sentinel resolve-hostnames yes'
+        'sentinel announce-hostnames yes'
+        > /tmp/sentinel.conf && redis-sentinel /tmp/sentinel.conf
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "26379", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - ticketing-network
+
+  redis-sentinel-2:
+    image: redis:7-alpine
+    container_name: ticketing-redis-sentinel-2
+    command:
+      - sh
+      - -c
+      - >
+        printf '%s\n'
+        'port 26379'
+        'sentinel monitor mymaster redis-master 6379 2'
+        'sentinel down-after-milliseconds mymaster 5000'
+        'sentinel failover-timeout mymaster 60000'
+        'sentinel parallel-syncs mymaster 1'
+        'sentinel resolve-hostnames yes'
+        'sentinel announce-hostnames yes'
+        > /tmp/sentinel.conf && redis-sentinel /tmp/sentinel.conf
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "26379", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - ticketing-network
+
+  redis-sentinel-3:
+    image: redis:7-alpine
+    container_name: ticketing-redis-sentinel-3
+    command:
+      - sh
+      - -c
+      - >
+        printf '%s\n'
+        'port 26379'
+        'sentinel monitor mymaster redis-master 6379 2'
+        'sentinel down-after-milliseconds mymaster 5000'
+        'sentinel failover-timeout mymaster 60000'
+        'sentinel parallel-syncs mymaster 1'
+        'sentinel resolve-hostnames yes'
+        'sentinel announce-hostnames yes'
+        > /tmp/sentinel.conf && redis-sentinel /tmp/sentinel.conf
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "26379", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - ticketing-network
+
+  kafka:
+    image: apache/kafka:3.7.0
+    container_name: ticketing-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      # KRaft 모드 (Zookeeper 없이 단독 실행)
+      KAFKA_NODE_ID: 0
+      KAFKA_PROCESS_ROLES: controller,broker
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - ticketing-network
+
+volumes:
+  mysql_data:
+  redis_master_data:
+  redis_replica1_data:
+  redis_replica2_data:
+  gradle_cache:
+  kafka_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  ticketing-network:
+    driver: bridge
