@@ -27,6 +27,7 @@ backend/build/
 backend/.gradle/
 backend/bin/
 backend/out/
+backend/uploads/
 
 # Gradle
 .gradle/
@@ -38,3 +39,7 @@ target/
 
 # Test
 backend/src/test/resources/application-test.yml
+
+# Python cache
+**/__pycache__/
+*.pyc
