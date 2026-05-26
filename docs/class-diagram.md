@@ -238,98 +238,48 @@ classDiagram
 ## 3. Controller · Infrastructure Layer
 
 ```mermaid
-classDiagram
-    direction TB
+flowchart TB
+    subgraph Controllers
+        AC["AuthController<br/>POST /api/auth/signup -> 201<br/>POST /api/auth/login -> 200<br/>POST /api/auth/reissue -> 200<br/>POST /api/auth/logout -> 200"]
+        EC["EventController<br/>GET /api/events -> 200<br/>GET /api/events/:id -> 200<br/>POST /api/events -> 201<br/>PUT /api/events/:id -> 200<br/>PATCH /api/events/:id/status -> 200"]
+        SC["SeatController<br/>GET /api/events/:id/seats -> 200<br/>POST /api/seats/:id/hold -> 200<br/>DELETE /api/seats/:id/hold -> 200"]
+        BC["BookingController<br/>POST /api/bookings -> 202<br/>GET /api/bookings/status/:bookingNo -> 200<br/>POST /api/bookings/:id/cancel -> 200<br/>GET /api/bookings/my -> 200"]
+        QC["QueueController<br/>POST /api/queue/enter -> 200<br/>GET /api/queue/status -> 200<br/>GET /api/queue/stream -> SSE<br/>POST /api/queue/token -> 200"]
+    end
 
-    %% ── Controllers ───────────────────────────────────────────────
+    subgraph Services
+        AS["AuthService"]
+        ES["EventService"]
+        SS["SeatService"]
+        BS["BookingService"]
+        QS["QueueService"]
+    end
 
-    class AuthController {
-        POST /api/auth/signup → 201
-        POST /api/auth/login → 200
-        POST /api/auth/reissue → 200
-        POST /api/auth/logout → 200
-    }
+    subgraph Kafka
+        BRC["BookingRequestConsumer<br/>@KafkaListener booking-requests"]
+        BEP["BookingEventProducer<br/>booking-events producer"]
+        KC["KafkaConfig<br/>10 req partitions / 5 event partitions<br/>DLQ + DefaultErrorHandler"]
+    end
 
-    class EventController {
-        GET  /api/events → 200
-        GET  /api/events/{id} → 200
-        POST /api/events → 201
-        PUT  /api/events/{id} → 200
-        PATCH /api/events/{id}/status → 200
-    }
+    subgraph RedisInfra
+        RKL["RedisKeyExpirationListener<br/>seat hold TTL expiry"]
+        JTP["JwtTokenProvider"]
+    end
 
-    class SeatController {
-        GET    /api/events/{id}/seats → 200
-        POST   /api/seats/{id}/hold → 200
-        DELETE /api/seats/{id}/hold → 200
-    }
+    AC --> AS
+    EC --> ES
+    SC --> SS
+    BC --> BS
+    QC --> QS
 
-    class BookingController {
-        POST /api/bookings → 202
-        GET  /api/bookings/status/{no} → 200
-        POST /api/bookings/{id}/cancel → 200
-        GET  /api/bookings/my → 200
-    }
+    BS -->|publish booking-requests| BRC
+    BRC -->|persistBookingRequest| BS
+    BRC -->|publish booking-events| BEP
+    BS -->|cancel event publish| BEP
+    BRC -.-> KC
 
-    class QueueController {
-        POST /api/queue/enter → 200
-        GET  /api/queue/status → 200
-        GET  /api/queue/stream → SSE
-        POST /api/queue/token → 200
-    }
-
-    %% ── Kafka ─────────────────────────────────────────────────────
-
-    class BookingRequestConsumer {
-        <<@KafkaListener booking-requests>>
-        +consume(BookingRequestEvent)
-    }
-
-    class BookingEventProducer {
-        <<booking-events>>
-        +send(BookingEvent) CompletableFuture
-    }
-
-    class KafkaConfig {
-        <<@Configuration>>
-        bookingRequestsTopic : partitions=10
-        bookingEventsTopic   : partitions=5
-        bookingRequestsDlqTopic
-        bookingEventsDlqTopic
-        DefaultErrorHandler  : FixedBackOff(1s × 3)
-        DeadLetterPublishingRecoverer
-    }
-
-    %% ── Redis 인프라 ───────────────────────────────────────────────
-
-    class RedisKeyExpirationListener {
-        <<@Component keyevent:expired>>
-        +onMessage(Message)
-    }
-
-    class JwtTokenProvider {
-        +createAccessToken(Long, String) String
-        +createRefreshToken(Long) String
-        +validateToken(String) bool
-        +getUserId(String) Long
-    }
-
-    %% 컨트롤러 → 서비스
-    AuthController    --> AuthService
-    EventController   --> EventService
-    SeatController    --> SeatService
-    BookingController --> BookingService
-    QueueController   --> QueueService
-
-    %% Kafka 흐름
-    BookingService          --> BookingRequestConsumer  : publishes to\nbooking-requests
-    BookingRequestConsumer  --> BookingService          : persistBookingRequest()
-    BookingRequestConsumer  --> BookingEventProducer    : downstream
-    BookingService          --> BookingEventProducer    : cancelBooking()
-    BookingRequestConsumer  ..> KafkaConfig             : uses error handler
-
-    %% Redis 자동 해제
-    RedisKeyExpirationListener --> SeatRepository : seat:hold TTL expiry\n→ auto-release
+    RKL -->|auto release expired holds| SS
+    JTP --> AC
 ```
 
 ---
