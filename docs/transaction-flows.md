@@ -177,23 +177,21 @@ sequenceDiagram
     BS->>DB: findByIdWithEventForUpdate(seatId) — PESSIMISTIC_WRITE
 
     alt 좌석 HOLD 아님
-        BS-->>Con: IllegalStateException → DLQ
+        Note over BS,DB: 🟦 @Transactional ROLLBACK
+        BS-->>Con: NonRetryableBookingException
     end
 
-    BS->>DB: existsBySeatIdAndStatusIn() — 이중 예매 확인
     BS->>DB: seat.sell()
-    BS->>DB: decreaseAvailableSeats(eventId)
-    Note over DB: UPDATE events SET available_seats - 1 (원자적)
 
     BS->>DB: Booking 생성 → confirm()
     BS->>DB: Payment 생성 → success()
 
     Note over BS,DB: 🟦 @Transactional COMMIT
-
     Con->>R:  SET booking:status:{bookingNo} = CONFIRMED (TTL 10분)
     Con->>EP: send(BookingEvent) — fire-and-forget
 
     Note over EP: booking-events 발행 (알림/통계 다운스트림)
+    Note over Con,R: NonRetryableBookingException이면 Consumer가 FAILED 기록 후 종료 (재throw 없음)
 ```
 
 ---
@@ -227,7 +225,6 @@ sequenceDiagram
     BS->>DB: booking.cancel()
     BS->>DB: payment.refund()
     BS->>DB: seat.release()
-    BS->>DB: increaseAvailableSeats(eventId)
     Note over BS: afterCommit 콜백 등록 (WebSocket + Kafka)
 
     Note over BS,DB: 🟦 @Transactional COMMIT

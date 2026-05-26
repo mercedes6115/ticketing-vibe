@@ -84,6 +84,7 @@ classDiagram
         SCHEDULED
         OPEN
         CLOSED
+        CANCELLED
     }
 
     class SeatStatus {
@@ -149,7 +150,10 @@ classDiagram
     class EventRepository {
         <<interface>>
         +findByStatus(EventStatus) Page
+        +findByStatusIn(List~EventStatus~, Pageable) Page
         +findEventsToOpen(LocalDateTime) List
+        +findEventsToClose(LocalDateTime) List
+        +findByIdWithLock(Long) Optional~Event~
         +decreaseAvailableSeats(Long) int
         +increaseAvailableSeats(Long) int
     }
@@ -197,8 +201,8 @@ classDiagram
         -RedisTemplate redisTemplate
         -SimpMessagingTemplate messagingTemplate
         +getSeatsByEventId(Long) List
-        +holdSeat(Long userId) SeatResponse
-        +releaseSeat(Long userId) SeatResponse
+        +holdSeat(Long seatId, Long userId) SeatResponse
+        +releaseSeat(Long seatId, Long userId) SeatResponse
         +isHeldByUser(Long, Long) bool
     }
 
@@ -242,9 +246,9 @@ flowchart TB
     subgraph Controllers
         AC["AuthController<br/>POST /api/auth/signup -> 201<br/>POST /api/auth/login -> 200<br/>POST /api/auth/reissue -> 200<br/>POST /api/auth/logout -> 200"]
         EC["EventController<br/>GET /api/events -> 200<br/>GET /api/events/:id -> 200<br/>POST /api/events -> 201<br/>PUT /api/events/:id -> 200<br/>PATCH /api/events/:id/status -> 200"]
-        SC["SeatController<br/>GET /api/events/:id/seats -> 200<br/>POST /api/seats/:id/hold -> 200<br/>DELETE /api/seats/:id/hold -> 200"]
-        BC["BookingController<br/>POST /api/bookings -> 202<br/>GET /api/bookings/status/:bookingNo -> 200<br/>POST /api/bookings/:id/cancel -> 200<br/>GET /api/bookings/my -> 200"]
-        QC["QueueController<br/>POST /api/queue/enter -> 200<br/>GET /api/queue/status -> 200<br/>GET /api/queue/stream -> SSE<br/>POST /api/queue/token -> 200"]
+        SC["SeatController<br/>GET /api/events/:eventId/seats -> 200<br/>GET /api/seats/:seatId -> 200<br/>POST /api/seats/:seatId/hold -> 200<br/>DELETE /api/seats/:seatId/hold -> 200"]
+        BC["BookingController<br/>POST /api/bookings -> 202<br/>GET /api/bookings/status/:bookingNo -> 200<br/>GET /api/bookings/no/:bookingNo -> 200<br/>POST /api/bookings/:id/cancel -> 200"]
+        QC["QueueController<br/>POST /api/queue/enter -> 200<br/>GET /api/queue/status -> 200<br/>GET /api/queue/stream -> SSE<br/>POST /api/queue/token -> 200<br/>POST /api/queue/exit -> 200"]
     end
 
     subgraph Services

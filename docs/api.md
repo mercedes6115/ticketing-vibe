@@ -83,6 +83,8 @@ Base URL: `http://localhost:8080`
 
 **Response** `200 OK` — Page\<EventResponse\>
 
+> 현재 구현은 전체 이벤트가 아니라 `SCHEDULED`, `OPEN` 상태 이벤트만 반환한다.
+
 ---
 
 ### GET /api/events/{id} — 이벤트 상세 조회
@@ -109,9 +111,9 @@ Base URL: `http://localhost:8080`
 
 ### GET /api/events/status/{status} — 상태별 이벤트 조회
 
-**인증**: 불필요
+**인증**: 필요
 
-**Path**: `status` = `UPCOMING` | `OPEN` | `CLOSED` | `CANCELLED`
+**Path**: `status` = `SCHEDULED` | `OPEN` | `CLOSED` | `CANCELLED`
 
 **Response** `200 OK` — Page\<EventResponse\>
 
@@ -148,7 +150,7 @@ Base URL: `http://localhost:8080`
 
 **인증**: 필요 (ADMIN)
 
-**Query Parameters**: `status` = `UPCOMING` | `OPEN` | `CLOSED` | `CANCELLED`
+**Query Parameters**: `status` = `SCHEDULED` | `OPEN` | `CLOSED` | `CANCELLED`
 
 **Response** `200 OK` — EventResponse
 
@@ -178,7 +180,7 @@ Base URL: `http://localhost:8080`
 
 ### GET /api/events/{eventId}/seats — 이벤트별 좌석 목록
 
-**인증**: 불필요
+**인증**: 필요
 
 **Response** `200 OK`
 ```json
@@ -199,7 +201,7 @@ Base URL: `http://localhost:8080`
 
 ### GET /api/seats/{seatId} — 좌석 상세 조회
 
-**인증**: 불필요
+**인증**: 필요
 
 **Response** `200 OK` — SeatResponse
 
@@ -227,7 +229,7 @@ Base URL: `http://localhost:8080`
 
 **Response** `200 OK` — SeatResponse (status: HOLD)
 
-> 입장 토큰(`queue:token:{userId}:{eventId}`)이 없으면 400 에러.
+> 입장 토큰(`queue:token:{userId}:{eventId}`)이 없으면 `403 Forbidden`.
 > Redisson 분산락으로 동시 요청 직렬화. TTL 5분 후 자동 해제.
 
 ---
@@ -244,13 +246,12 @@ Base URL: `http://localhost:8080`
 
 ### POST /api/queue/enter — 대기열 진입
 
-**인증**: 불필요
+**인증**: 필요
 
 **Request Body**
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
 | eventId | Long | Y | |
-| userId | Long | Y | |
 
 **Response** `200 OK`
 ```json
@@ -267,9 +268,9 @@ Base URL: `http://localhost:8080`
 
 ### GET /api/queue/status — 대기열 상태 조회
 
-**인증**: 불필요
+**인증**: 필요
 
-**Query Parameters**: `eventId`, `userId`
+**Query Parameters**: `eventId`
 
 **Response** `200 OK` — QueueStatusResponse
 
@@ -277,9 +278,9 @@ Base URL: `http://localhost:8080`
 
 ### GET /api/queue/stream — SSE 대기열 실시간 스트림
 
-**인증**: 불필요 (SSE는 커스텀 헤더 불가)
+**인증**: 필요 (`EventSource` 특성상 `?token={accessToken}` 쿼리 파라미터 사용)
 
-**Query Parameters**: `eventId`, `userId`
+**Query Parameters**: `eventId`, `token`
 
 **Response** `text/event-stream`
 - `queue-status` 이벤트: 2초마다 현재 순번 전송
@@ -291,9 +292,9 @@ Base URL: `http://localhost:8080`
 
 ### POST /api/queue/exit — 대기열 이탈
 
-**인증**: 불필요
+**인증**: 필요
 
-**Query Parameters**: `eventId`, `userId`
+**Query Parameters**: `eventId`
 
 **Response** `200 OK` (body 없음)
 
@@ -301,9 +302,9 @@ Base URL: `http://localhost:8080`
 
 ### POST /api/queue/token — 입장 토큰 수동 발급
 
-**인증**: 불필요
+**인증**: 필요
 
-**Query Parameters**: `eventId`, `userId`
+**Query Parameters**: `eventId`
 
 **Response** `200 OK`
 ```json
@@ -321,7 +322,7 @@ Base URL: `http://localhost:8080`
 
 ### GET /api/queue/size — 대기열 인원 조회
 
-**인증**: 불필요
+**인증**: 필요
 
 **Query Parameters**: `eventId`
 
@@ -358,7 +359,7 @@ Base URL: `http://localhost:8080`
 
 ### GET /api/bookings/status/{bookingNo} — 예매 처리 상태 폴링
 
-**인증**: 불필요
+**인증**: 필요
 
 **Response** `200 OK`
 ```json
@@ -372,7 +373,7 @@ Base URL: `http://localhost:8080`
 |--------|------|
 | PROCESSING | Consumer 처리 중 |
 | CONFIRMED | 예매 완료 |
-| FAILED | 처리 실패 (재시도 또는 DLQ) |
+| FAILED | 처리 실패가 최종 확정된 상태 |
 | UNKNOWN | Redis 키 만료 + DB에도 없음 |
 
 ---
@@ -443,6 +444,8 @@ Base URL: `http://localhost:8080`
 }
 ```
 
+> 현재 구현은 인증만 필요하고, `paymentId` 조회에 대한 소유권 검증은 하지 않는다.
+
 ---
 
 ### GET /api/payments/bookings/{bookingId} — 예매별 결제 조회
@@ -450,6 +453,8 @@ Base URL: `http://localhost:8080`
 **인증**: 필요
 
 **Response** `200 OK` — PaymentResponse
+
+> 현재 구현은 인증만 필요하고, `bookingId` 기준 결제 조회에 대한 소유권 검증은 하지 않는다.
 
 ---
 
@@ -513,7 +518,7 @@ Base URL: `http://localhost:8080`
 |-------------|------|
 | 400 Bad Request | 요청 파라미터 오류 / 비즈니스 규칙 위반 |
 | 401 Unauthorized | JWT 없음 또는 만료 |
-| 403 Forbidden | 권한 부족 (ADMIN 전용 API) |
+| 403 Forbidden | 권한 부족 / 본인 소유 리소스 아님 / 유효한 대기열 토큰 없음 |
 | 404 Not Found | 리소스 없음 |
 | 409 Conflict | 이미 선점된 좌석 / 이미 취소된 예매 |
 | 500 Internal Server Error | 서버 내부 오류 |

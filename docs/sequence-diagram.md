@@ -18,12 +18,12 @@ sequenceDiagram
     FE->>API: POST /api/auth/signup
     API->>DB: 이메일 중복 확인 + 사용자 저장 (BCrypt)
     DB-->>API: User 저장 완료
-    API-->>FE: 200 { accessToken, refreshToken, userId, role }
+    API-->>FE: 201 { accessToken, refreshToken, userId, role }
 
     User->>FE: 이메일 / 비밀번호 입력
     FE->>API: POST /api/auth/login
     API->>DB: 사용자 조회 + 비밀번호 검증
-    API->>Redis: refresh:{userId} = refreshToken (TTL 7일)
+    API->>Redis: auth:refresh:{userId} = refreshToken (TTL 7일)
     API-->>FE: 200 { accessToken, refreshToken, userId, role }
 ```
 
@@ -39,11 +39,11 @@ sequenceDiagram
     participant Redis
 
     User->>FE: 이벤트 예매 페이지 진입
-    FE->>API: POST /api/queue/enter { eventId, userId }
+    FE->>API: POST /api/queue/enter { eventId } + JWT
     API->>Redis: ZADD queue:event:{eventId} timestamp userId
     API-->>FE: 200 { position, totalWaiting, canEnter }
 
-    FE->>API: GET /api/queue/stream?eventId=&userId= (SSE 연결)
+    FE->>API: GET /api/queue/stream?eventId=&token=ACCESS_TOKEN (SSE 연결)
     API-->>FE: SSE 스트림 수립
 
     loop 2초마다 순번 전송
@@ -78,7 +78,7 @@ sequenceDiagram
     API->>Redis: queue:token:{userId}:{eventId} 존재 확인
     Note right of API: 토큰 없으면 즉시 거부
 
-    API->>Redis: Redisson RLock 획득 (대기 3초 / 임대 10초)
+    API->>Redis: Redisson RLock 획득 (대기 5초 / 임대 10초)
     Note right of API: 다른 요청 대기 또는 409 반환
 
     API->>DB: SELECT seat FOR UPDATE (상태 재확인)
@@ -116,7 +116,7 @@ sequenceDiagram
     API->>Redis: seat:hold:{seatId} == userId 검증
     API->>API: bookingNo 생성 (BK + 날짜 + UUID)
     API->>Redis: booking:status:{bookingNo} = PROCESSING (TTL 10분)
-    API->>Kafka: booking-requests 발행 (key=userId)
+    API->>Kafka: booking-requests 발행 ACK 대기 (key=userId)
     API->>Redis: seat:hold:{seatId} 삭제
     API-->>FE: 202 Accepted { bookingNo, status: PROCESSING }
 
@@ -157,9 +157,9 @@ sequenceDiagram
 
     API->>DB: Booking 조회 + userId 소유자 확인
     API->>DB: booking.cancel() + payment.refund()
-    API->>DB: seat.release() + availableSeats 증가
-    API->>Kafka: booking-events 발행 (status: CANCELLED)
+    API->>DB: seat.release()
     API-->>FE: 200 BookingResponse (CANCELLED)
+    Note right of API: 커밋 후 WebSocket + Kafka 발행
     API-->>FE: WebSocket /topic/events/{eventId}/seats (AVAILABLE)
 ```
 

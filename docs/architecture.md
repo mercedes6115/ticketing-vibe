@@ -80,7 +80,7 @@ graph TB
 | 실시간 - 대기열 | SSE (Server-Sent Events) |
 | 분산락 | Redisson RLock |
 | 메시지 큐 | Apache Kafka 3.7 (KRaft) |
-| 캐시 / 상태 | Redis 7 |
+| 캐시 / 상태 | Redis 7 + Sentinel |
 
 ### Frontend
 
@@ -98,7 +98,7 @@ graph TB
 |------|------|
 | 컨테이너 | Docker Compose |
 | DB | MySQL 8 |
-| 캐시 / 큐 | Redis 7 |
+| 캐시 / 큐 | Redis 7 + Sentinel |
 | 메시지 브로커 | Kafka 3.7 (KRaft, Zookeeper 없음) |
 
 ---
@@ -113,7 +113,7 @@ graph TB
 | `seat:hold:{seatId}` | String | 5분 | 좌석 홀드 (value = userId) |
 | `seat:lock:{seatId}` | String | 10초 | Redisson 분산락 |
 | `booking:status:{bookingNo}` | String | 10분 | 예매 처리 상태 (PROCESSING / CONFIRMED / FAILED) |
-| `refresh:{userId}` | String | 7일 | Refresh Token |
+| `auth:refresh:{userId}` | String | 7일 | Refresh Token |
 
 ---
 
@@ -129,6 +129,7 @@ graph TB
 - `userId` 키: 같은 사용자 요청이 항상 같은 파티션 → 순서 보장
 - Consumer Group: `booking-requests-group` (DB 쓰기), `ticketing-group` (알림)
 - 에러 핸들링: `DefaultErrorHandler` 1초 간격 3회 재시도 후 `.DLQ` 격리
+- `NonRetryableBookingException`은 Consumer에서 `FAILED`로 마감하고 재throw하지 않는다.
 
 ---
 

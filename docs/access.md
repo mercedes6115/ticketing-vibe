@@ -25,6 +25,7 @@
 | MySQL | localhost:3307 | ticketing / ticketing1234 |
 | MySQL root | localhost:3307 | root / root1234 |
 | Redis | localhost:6379 | 없음 |
+| Redis Sentinel | localhost:26379 | 없음 |
 | Kafka | localhost:9092 | 없음 |
 | DB명 | ticketing | |
 
