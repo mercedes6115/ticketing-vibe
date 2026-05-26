@@ -29,7 +29,7 @@ sequenceDiagram
 
 ---
 
-## 2. 대기열 진입 및 입장 토큰 발급
+## 2. 대기열 진입 및 입장 토큰 발급 ([SSE](https://www.notion.so/SSE-36c05755fb8780b78318f699da2c1628?source=copy_link))
 
 ```mermaid
 sequenceDiagram
@@ -63,7 +63,7 @@ sequenceDiagram
 
 ---
 
-## 3. 좌석 선점
+## 3. 좌석 선점 ([WebSocket / STOMP](https://www.notion.so/WebSocket-STOMP-36c05755fb8780c09420f763293a2d65?source=copy_link))
 
 ```mermaid
 sequenceDiagram

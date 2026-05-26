@@ -476,7 +476,7 @@ k6 run -e VUS=150 -e ITERATIONS=1000 scripts/load-test-full-flow.js
 
 ### 적용한 변경
 
-- `persistBookingRequest()`에서 `existsBySeatIdAndStatusIn` 중복 확인 쿼리 제거
+- [`Idempotency`](https://www.notion.so/Idempotency-36c05755fb87800eb69ac0b436ad2948?source=copy_link) 기준은 `bookingNo`로 유지한 채 `persistBookingRequest()`에서 `existsBySeatIdAndStatusIn` 중복 확인 쿼리 제거
 
 ### k6 결과 요약
 
@@ -528,7 +528,7 @@ k6 run -e VUS=150 -e ITERATIONS=1000 scripts/load-test-full-flow.js
 - consumer에서 `LazyInitializationException`이 반복 발생했다.
 - 대표 에러:
   - `could not initialize proxy [com.ticketing.entity.Event#16] - no Session`
-- 이 예외 때문에 예매 요청이 `CONFIRMED`로 끝나지 못하고 실패/DLQ 처리되었다.
+- 이 예외 때문에 예매 요청이 `CONFIRMED`로 끝나지 못하고 [`DefaultErrorHandler / DLQ`](https://www.notion.so/DLQ-DefaultErrorHandler-36c05755fb8780749b62f0e778699920?source=copy_link) 경로로 처리되었다.
 
 ### 해석
 

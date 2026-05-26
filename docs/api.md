@@ -488,7 +488,7 @@ Base URL: `http://localhost:8080`
 
 ---
 
-## WebSocket
+## [WebSocket / STOMP](https://www.notion.so/WebSocket-STOMP-36c05755fb8780c09420f763293a2d65?source=copy_link)
 
 **연결**: `ws://localhost:8080/ws` (SockJS)
 

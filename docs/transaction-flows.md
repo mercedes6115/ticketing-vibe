@@ -2,14 +2,14 @@
 
 > **범례**
 > - 🟦 `@Transactional` 경계 (DB 커밋/롤백 단위)
-> - 🟨 `afterCommit()` 훅 (커밋 성공 후 실행)
+> - 🟨 [`afterCommit()`](https://www.notion.so/afterCommit-36c05755fb87807d8ed2d7b70cf9a545?source=copy_link) 훅 (커밋 성공 후 실행)
 > - 🟥 에러 / 예외 경로
 
 ---
 
 ## 1. 좌석 선점 — `SeatService.holdSeat()`
 
-분산락(Redisson) + DB 비관적 락(PESSIMISTIC_WRITE)을 조합해 이중 선점을 방지한다.
+분산락([Redisson](https://www.notion.so/Redisson-36c05755fb8780b89412fae09e10d6c9?source=copy_link)) + DB 비관적 락([Pessimistic Lock](https://www.notion.so/Pesimisstic-lock-36c05755fb878098b242d34cfcb0373a?source=copy_link))을 조합해 이중 선점을 방지한다.
 락 해제 → Spring 커밋 사이 창을 DB 행 잠금으로 닫는다.
 
 ```mermaid
@@ -65,7 +65,7 @@ sequenceDiagram
 
 ## 2. 좌석 해제 — `SeatService.releaseSeat()`
 
-Redis 홀드 키 삭제를 `afterCommit()`으로 지연한다.
+Redis 홀드 키 삭제를 [`afterCommit()`](https://www.notion.so/afterCommit-36c05755fb87807d8ed2d7b70cf9a545?source=copy_link)으로 지연한다.
 커밋 전 삭제 시 DB 롤백이 발생하면 키는 없고 DB는 HOLD → 좌석 영구 잠김.
 
 ```mermaid
@@ -112,7 +112,7 @@ sequenceDiagram
 ## 3. 예매 요청 — `BookingService.createBooking()`
 
 DB를 건드리지 않으므로 트랜잭션 없이 실행한다 (`Propagation.NOT_SUPPORTED`).
-Kafka 발행 ACK를 동기 대기 후에만 홀드 키를 삭제해 좌석 영구 HOLD를 방지한다.
+[Kafka](https://www.notion.so/Kafka-36c05755fb878076a9a1dd6328913883?source=copy_link) 발행 ACK를 동기 대기 후에만 홀드 키를 삭제해 좌석 영구 HOLD를 방지한다.
 
 ```mermaid
 sequenceDiagram
@@ -151,7 +151,7 @@ sequenceDiagram
 
 ## 4. 예매 영속화 — `BookingRequestConsumer → BookingService.persistBookingRequest()`
 
-Consumer가 DB 쓰기를 담당한다. `bookingNo` 중복 체크로 at-least-once 재처리에 안전하다.
+Consumer가 DB 쓰기를 담당한다. [`Idempotency`](https://www.notion.so/Idempotency-36c05755fb87800eb69ac0b436ad2948?source=copy_link)를 위해 `bookingNo` 중복 체크로 at-least-once 재처리에 안전하게 만든다.
 
 ```mermaid
 sequenceDiagram
@@ -167,7 +167,7 @@ sequenceDiagram
 
     Note over BS,DB: 🟦 @Transactional BEGIN
 
-    BS->>DB: findByBookingNo(bookingNo) — 아이디엠포턴시 체크
+    BS->>DB: findByBookingNo(bookingNo) — Idempotency 체크
     alt 이미 처리됨
         DB-->>BS: Booking exists
         BS-->>Con: BookingEvent (skip)
@@ -199,7 +199,7 @@ sequenceDiagram
 ## 5. 예매 취소 — `BookingService.cancelBooking()`
 
 취소는 동시성 경합이 없으므로 동기 트랜잭션으로 처리한다.
-Kafka 발행을 `afterCommit()`으로 지연해 롤백 시 CANCELLED 이벤트 오발행을 막는다.
+Kafka 발행을 [`afterCommit()`](https://www.notion.so/afterCommit-36c05755fb87807d8ed2d7b70cf9a545?source=copy_link)으로 지연해 롤백 시 CANCELLED 이벤트 오발행을 막는다.
 
 ```mermaid
 sequenceDiagram
@@ -240,7 +240,7 @@ sequenceDiagram
 
 ## 6. 회원가입 — `AuthService.signup()`
 
-리프레시 토큰 저장을 `afterCommit()`으로 지연해 DB 롤백 시 7일 토큰 잔류를 방지한다.
+리프레시 토큰 저장을 [`afterCommit()`](https://www.notion.so/afterCommit-36c05755fb87807d8ed2d7b70cf9a545?source=copy_link)으로 지연해 DB 롤백 시 7일 토큰 잔류를 방지한다.
 
 ```mermaid
 sequenceDiagram
@@ -276,7 +276,7 @@ sequenceDiagram
 
 ## 7. Redis TTL 만료 자동 해제 — `RedisKeyExpirationListener`
 
-사용자가 선점 후 5분 내 예매하지 않으면 Redis TTL 만료 이벤트로 좌석을 자동 해제한다.
+사용자가 선점 후 5분 내 예매하지 않으면 [Redis TTL / Keyspace Notification](https://www.notion.so/Redis-TTL-Keyspace-Notification-36c05755fb87800cb4cfef7e3ba08be3?source=copy_link) 만료 이벤트로 좌석을 자동 해제한다.
 
 ```mermaid
 sequenceDiagram

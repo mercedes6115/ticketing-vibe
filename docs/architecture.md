@@ -13,7 +13,7 @@ graph TB
     subgraph API["Spring Boot 3.2 (API Server)"]
         direction TB
         REST["REST API"]
-        WS_EP["WebSocket STOMP /ws"]
+        WS_EP["WebSocket / STOMP /ws"]
         SSE_EP["SSE /api/queue/stream"]
 
         subgraph SVC["Service Layer"]
@@ -44,7 +44,7 @@ graph TB
     end
 
     FE -->|"HTTP/REST (JWT)"| REST
-    FE <-->|"WebSocket (STOMP)"| WS_EP
+    FE <-->|"WebSocket / STOMP"| WS_EP
     FE <-->|"SSE"| SSE_EP
 
     REST --> SVC
@@ -76,10 +76,10 @@ graph TB
 | 언어 / 프레임워크 | Java 17, Spring Boot 3.2 |
 | ORM | Spring Data JPA + Hibernate |
 | 인증 | JWT (Access 30분 / Refresh 7일) |
-| 실시간 - 좌석 | WebSocket STOMP |
-| 실시간 - 대기열 | SSE (Server-Sent Events) |
+| 실시간 - 좌석 | [WebSocket / STOMP](https://www.notion.so/WebSocket-STOMP-36c05755fb8780c09420f763293a2d65?source=copy_link) |
+| 실시간 - 대기열 | [SSE (Server-Sent Events)](https://www.notion.so/SSE-36c05755fb8780b78318f699da2c1628?source=copy_link) |
 | 분산락 | Redisson RLock |
-| 메시지 큐 | Apache Kafka 3.7 (KRaft) |
+| 메시지 큐 | [Apache Kafka 3.7 (KRaft)](https://www.notion.so/Kafka-36c05755fb878076a9a1dd6328913883?source=copy_link) |
 | 캐시 / 상태 | Redis 7 + Sentinel |
 
 ### Frontend
@@ -117,7 +117,7 @@ graph TB
 
 ---
 
-## Kafka 토픽 설계
+## [Kafka](https://www.notion.so/Kafka-36c05755fb878076a9a1dd6328913883?source=copy_link) 토픽 설계
 
 | 토픽 | 파티션 | 파티션 키 | 역할 |
 |------|--------|-----------|------|
@@ -128,7 +128,7 @@ graph TB
 
 - `userId` 키: 같은 사용자 요청이 항상 같은 파티션 → 순서 보장
 - Consumer Group: `booking-requests-group` (DB 쓰기), `ticketing-group` (알림)
-- 에러 핸들링: `DefaultErrorHandler` 1초 간격 3회 재시도 후 `.DLQ` 격리
+- 에러 핸들링: [`DefaultErrorHandler / DLQ`](https://www.notion.so/DLQ-DefaultErrorHandler-36c05755fb8780749b62f0e778699920?source=copy_link) 1초 간격 3회 재시도 후 `.DLQ` 격리
 - `NonRetryableBookingException`은 Consumer에서 `FAILED`로 마감하고 재throw하지 않는다.
 
 ---
