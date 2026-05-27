@@ -80,7 +80,7 @@ graph TB
 | 실시간 - 대기열 | [SSE (Server-Sent Events)](https://www.notion.so/SSE-36c05755fb8780b78318f699da2c1628?source=copy_link) |
 | 분산락 | Redisson RLock |
 | 메시지 큐 | [Apache Kafka 3.7 (KRaft)](https://www.notion.so/Kafka-36c05755fb878076a9a1dd6328913883?source=copy_link) |
-| 캐시 / 상태 | Redis 7 + Sentinel |
+| 캐시 / 상태 | [Redis 7 + Sentinel](https://www.notion.so/Redis-Sentinel-36d05755fb8780d6946bf08a1fc1b82e?source=copy_link) |
 
 ### Frontend
 
