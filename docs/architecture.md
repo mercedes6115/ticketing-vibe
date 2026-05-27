@@ -76,11 +76,11 @@ graph TB
 | 언어 / 프레임워크 | Java 17, Spring Boot 3.2 |
 | ORM | Spring Data JPA + Hibernate |
 | 인증 | JWT (Access 30분 / Refresh 7일) |
-| 실시간 - 좌석 | [WebSocket / STOMP](https://www.notion.so/WebSocket-STOMP-36c05755fb8780c09420f763293a2d65?source=copy_link) |
-| 실시간 - 대기열 | [SSE (Server-Sent Events)](https://www.notion.so/SSE-36c05755fb8780b78318f699da2c1628?source=copy_link) |
+| 실시간 - 좌석 | [WebSocket / STOMP - WebSocket / STOMP이란?](https://www.notion.so/WebSocket-STOMP-36c05755fb8780c09420f763293a2d65?source=copy_link) |
+| 실시간 - 대기열 | [SSE (Server-Sent Events) - SSE (Server-Sent Events)는 뭘까?](https://www.notion.so/SSE-36c05755fb8780b78318f699da2c1628?source=copy_link) |
 | 분산락 | Redisson RLock |
-| 메시지 큐 | [Apache Kafka 3.7 (KRaft)](https://www.notion.so/Kafka-36c05755fb878076a9a1dd6328913883?source=copy_link) |
-| 캐시 / 상태 | [Redis 7 + Sentinel](https://www.notion.so/Redis-Sentinel-36d05755fb8780d6946bf08a1fc1b82e?source=copy_link) |
+| 메시지 큐 | [Apache Kafka 3.7 (KRaft) - Apache Kafka 3.7 (KRaft) 에 대한 간략한 정리](https://www.notion.so/Kafka-36c05755fb878076a9a1dd6328913883?source=copy_link) |
+| 캐시 / 상태 | [Redis 7 + Sentinel - Redis 7 + Sentinel 사용해본적 없는 redis sentinel 간략하게 알아보기](https://www.notion.so/Redis-Sentinel-36d05755fb8780d6946bf08a1fc1b82e?source=copy_link) |
 
 ### Frontend
 
@@ -117,7 +117,7 @@ graph TB
 
 ---
 
-## [Kafka](https://www.notion.so/Kafka-36c05755fb878076a9a1dd6328913883?source=copy_link) 토픽 설계
+## Kafka 토픽 설계
 
 | 토픽 | 파티션 | 파티션 키 | 역할 |
 |------|--------|-----------|------|
@@ -128,7 +128,7 @@ graph TB
 
 - `userId` 키: 같은 사용자 요청이 항상 같은 파티션 → 순서 보장
 - Consumer Group: `booking-requests-group` (DB 쓰기), `ticketing-group` (알림)
-- 에러 핸들링: [`DefaultErrorHandler / DLQ`](https://www.notion.so/DLQ-DefaultErrorHandler-36c05755fb8780749b62f0e778699920?source=copy_link) 1초 간격 3회 재시도 후 `.DLQ` 격리
+- 에러 핸들링: [`DefaultErrorHandler / DLQ - DefaultErrorHandler / DLQ는 카프카에서 뭔데?`](https://www.notion.so/DLQ-DefaultErrorHandler-36c05755fb8780749b62f0e778699920?source=copy_link) 1초 간격 3회 재시도 후 `.DLQ` 격리
 - `NonRetryableBookingException`은 Consumer에서 `FAILED`로 마감하고 재throw하지 않는다.
 
 ---
