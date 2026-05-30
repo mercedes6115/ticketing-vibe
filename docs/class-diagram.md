@@ -1,6 +1,17 @@
 # Class Diagram — Ticketing System
 
----
+> 도메인 모델과 서비스/리포지토리 계층의 책임 분리를 정리한 문서입니다. 클래스 간 관계를 빠르게 파악할 때 사용합니다.
+
+| 빠른 정보 | 내용 |
+|-----------|------|
+| 목적 | Entity 모델과 서비스 계층의 책임을 시각적으로 요약 |
+| 먼저 볼 것 | `Entity Model` → `Service · Repository Layer` |
+| 함께 읽을 문서 | [ERD](../ERD.md), [시스템 아키텍처](architecture.md), [트랜잭션 흐름](transaction-flows.md) |
+
+## 문서 구성
+
+- [Entity Model](#1-entity-model)
+- [Service · Repository Layer](#2-service--repository-layer)
 
 ## 1. Entity Model
 
@@ -130,8 +141,6 @@ classDiagram
     Booking --> BookingStatus
     Payment --> PaymentStatus
 ```
-
----
 
 ## 2. Service · Repository Layer
 

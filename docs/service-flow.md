@@ -1,8 +1,25 @@
 # 서비스 플로우
 
-핵심 기능별 내부 처리 흐름 정리.
+> 핵심 기능이 실제로 어떤 순서로 처리되는지, 어디에서 상태를 바꾸고 어디에서 실시간 알림을 보내는지 정리한 문서입니다.
 
----
+| 빠른 정보 | 내용 |
+|-----------|------|
+| 목적 | 대기열, 좌석 선점, 예매, 인증의 처리 흐름을 단계별로 설명 |
+| 읽는 순서 | 대기열 → 좌석 선점 → 예매 요청 → 취소 → 인증 |
+| 함께 읽을 문서 | [시스템 아키텍처](architecture.md), [시퀀스 다이어그램](sequence-diagram.md), [트랜잭션 흐름](transaction-flows.md) |
+
+## 문서 구성
+
+- [대기열 시스템](#1-대기열-시스템)
+- [좌석 선점](#2-좌석-선점-분산락)
+- [예매 요청](#3-예매-요청-비동기--kafka)
+- [예매 취소](#4-예매-취소-동기)
+- [JWT 인증 흐름](#5-jwt-인증-흐름)
+
+## 읽기 포인트
+
+- 어느 단계가 사용자 응답 경로인지, 어느 단계가 비동기 백그라운드 처리인지 분리해서 보는 것이 중요합니다.
+- 이 문서의 플로우차트는 "무슨 기능이 있는가"보다 "어디에서 상태 정합성을 맞추는가"를 중심으로 읽으면 됩니다.
 
 ## 1. 대기열 시스템
 
@@ -33,8 +50,6 @@ flowchart TD
 - `SET NX` (setIfAbsent): 다중 서버 인스턴스 환경에서 토큰 중복 발급 방지
 - `SSE` + `QueueEmitterManager`: 서버 Push로 클라이언트 폴링 부하 제거
 - 대기열 키에 TTL 없음 → 이벤트 종료 시 관리자가 `clearQueue()` 호출
-
----
 
 ## 2. 좌석 선점 (분산락)
 
@@ -68,8 +83,6 @@ flowchart TD
 - 락 획득 후 DB 재조회: 락 대기 중 다른 요청이 상태를 변경했을 수 있으므로 재확인 필수
 - `afterCommit` [WebSocket / STOMP - WebSocket / STOMP이란?](https://www.notion.so/WebSocket-STOMP-36c05755fb8780c09420f763293a2d65?source=copy_link) 전송: 트랜잭션 롤백 시 클라이언트에 유령 HOLD 전달 방지
 - `releaseHoldSeat` 원자적 UPDATE: TTL 만료와 예매 처리 동시 발생 시 double-release 방지
-
----
 
 ## 3. 예매 요청 (비동기 — Kafka)
 
@@ -117,8 +130,6 @@ flowchart TD
 - [`DefaultErrorHandler / DLQ - DefaultErrorHandler / DLQ는 카프카에서 뭔데?`](https://www.notion.so/DLQ-DefaultErrorHandler-36c05755fb8780749b62f0e778699920?source=copy_link): 시스템 예외는 1초 간격 3회 재시도 후 `.DLQ` 격리
 - 비재시도 예외(`NonRetryableBookingException`): `FAILED`로 마감하고 같은 메시지를 반복 재소비하지 않음
 
----
-
 ## 4. 예매 취소 (동기)
 
 취소는 경합이 없으므로 비동기화 없이 `@Transactional` 하나로 처리한다.
@@ -141,8 +152,6 @@ flowchart TD
     M --> N["WebSocket 브로드캐스트<br/>좌석 AVAILABLE"]
     N --> O["200 BookingResponse 반환"]
 ```
-
----
 
 ## 5. JWT 인증 흐름
 

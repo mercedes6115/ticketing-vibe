@@ -1,8 +1,21 @@
 # 시퀀스 다이어그램
 
-사용자 시점의 전체 예매 흐름을 단계별로 정리한 다이어그램.
+> 사용자 관점에서 "언제 어떤 요청이 일어나고, 서버와 저장소가 어떻게 반응하는지"를 시간 순서대로 정리한 문서입니다.
 
----
+| 빠른 정보 | 내용 |
+|-----------|------|
+| 목적 | 회원가입부터 예매 완료, 취소, TTL 만료 복구까지 시점 중심으로 시각화 |
+| 추천 대상 | 흐름 이해가 먼저 필요한 리뷰어, 면접관, 협업자 |
+| 함께 읽을 문서 | [서비스 플로우](service-flow.md), [시스템 아키텍처](architecture.md), [트랜잭션 흐름](transaction-flows.md) |
+
+## 문서 구성
+
+- [회원가입 / 로그인](#1-회원가입--로그인)
+- [대기열 진입 및 토큰 발급](#2-대기열-진입-및-입장-토큰-발급-sse)
+- [좌석 선점](#3-좌석-선점-websocket--stomp)
+- [예매 요청](#4-예매-요청-비동기)
+- [예매 취소](#5-예매-취소)
+- [좌석 선점 자동 해제](#6-좌석-선점-자동-해제-ttl-만료)
 
 ## 1. 회원가입 / 로그인
 
@@ -26,8 +39,6 @@ sequenceDiagram
     API->>Redis: auth:refresh:{userId} = refreshToken (TTL 7일)
     API-->>FE: 200 { accessToken, refreshToken, userId, role }
 ```
-
----
 
 ## 2. 대기열 진입 및 입장 토큰 발급 (SSE)
 
@@ -61,8 +72,6 @@ sequenceDiagram
     FE->>FE: 좌석 선택 페이지로 이동
 ```
 
----
-
 ## 3. 좌석 선점 (WebSocket / STOMP)
 
 ```mermaid
@@ -95,8 +104,6 @@ sequenceDiagram
         API-->>FE: 409 이미 선점된 좌석
     end
 ```
-
----
 
 ## 4. 예매 요청 (비동기)
 
@@ -140,8 +147,6 @@ sequenceDiagram
     API-->>FE: BookingResponse (예매 상세)
 ```
 
----
-
 ## 5. 예매 취소
 
 ```mermaid
@@ -162,8 +167,6 @@ sequenceDiagram
     Note right of API: 커밋 후 WebSocket + Kafka 발행
     API-->>FE: WebSocket /topic/events/{eventId}/seats (AVAILABLE)
 ```
-
----
 
 ## 6. 좌석 선점 자동 해제 (TTL 만료)
 

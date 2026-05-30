@@ -1,10 +1,23 @@
 # API 문서
 
-Base URL: `http://localhost:8080`
+> 주요 사용자 API와 관리자 API의 요청 방식, 인증 여부, 응답 예시를 정리한 문서입니다.
 
-인증이 필요한 API는 요청 헤더에 `Authorization: Bearer {accessToken}` 포함.
+| 빠른 정보 | 내용 |
+|-----------|------|
+| Base URL | `http://localhost:8080` |
+| 인증 방식 | `Authorization: Bearer {accessToken}` |
+| 참고 문서 | [접속 정보](access.md), [서비스 플로우](service-flow.md), [시퀀스 다이어그램](sequence-diagram.md) |
 
----
+## API 맵
+
+| 영역 | 설명 |
+|------|------|
+| 인증 | 회원가입, 로그인, 토큰 재발급, 로그아웃 |
+| 이벤트 | 목록 조회, 상세 조회, 상태별 조회, 관리자 CRUD |
+| 좌석 | 좌석 조회, 홀드/해제, 관리자 일괄 생성 |
+| 예매 | 생성, 상태 조회, 상세 조회, 취소 |
+| 대기열 | 진입, 상태 확인, SSE 스트림, 토큰 발급 |
+| 관리자 | 이벤트, 예매, 사용자 관리 |
 
 ## 인증 (Auth)
 

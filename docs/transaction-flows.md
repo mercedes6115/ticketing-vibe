@@ -1,11 +1,25 @@
 # Transaction Flows — Ticketing System
 
-> **범례**
-> - 🟦 `@Transactional` 경계 (DB 커밋/롤백 단위)
-> - 🟨 [`afterCommit() - afterCommit()이란?`](https://www.notion.so/afterCommit-36c05755fb87807d8ed2d7b70cf9a545?source=copy_link) 훅 (커밋 성공 후 실행)
-> - 🟥 에러 / 예외 경로
+> 상태 정합성이 중요한 구간에서 트랜잭션 경계와 `afterCommit()` 훅이 어디에 배치되는지 설명하는 문서입니다.
 
----
+| 빠른 정보 | 내용 |
+|-----------|------|
+| 목적 | 락, 트랜잭션, 커밋 이후 후속 작업의 순서를 명확히 설명 |
+| 핵심 포인트 | 좌석 선점, 해제, 예매 요청, Consumer 영속화 경계 |
+| 함께 읽을 문서 | [서비스 플로우](service-flow.md), [시퀀스 다이어그램](sequence-diagram.md), [설계 트레이드오프](tradeoffs.md) |
+
+## 범례
+
+- `@Transactional`: DB 커밋/롤백 단위
+- `afterCommit()`: 커밋 성공 후 실행되는 후속 작업
+- 에러 경로: 예외 또는 조기 반환 지점
+
+## 문서 구성
+
+- [좌석 선점](#1-좌석-선점--seatserviceholdseat)
+- [좌석 해제](#2-좌석-해제--seatservicereleaseseat)
+- [예매 요청](#3-예매-요청--bookingservicecreatebooking)
+- [예매 영속화](#4-예매-영속화--bookingrequestconsumer--bookingservicepersistbookingrequest)
 
 ## 1. 좌석 선점 — `SeatService.holdSeat()`
 
