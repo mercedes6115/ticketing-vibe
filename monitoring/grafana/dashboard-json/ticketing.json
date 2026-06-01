@@ -348,6 +348,90 @@
           "legendFormat": "System CPU"
         }
       ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 36 },
+      "title": "Queue Metrics",
+      "type": "row"
+    },
+    {
+      "title": "Queue Size By Event",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 10, "x": 0, "y": 37 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 10, "lineWidth": 2 },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "ticketing_queue_size{application=\"ticketing\"}",
+          "legendFormat": "event {{event_id}}"
+        }
+      ]
+    },
+    {
+      "title": "Issued Queue Tokens By Event",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 10, "x": 10, "y": 37 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 10, "lineWidth": 2 },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "ticketing_queue_issued_tokens{application=\"ticketing\"}",
+          "legendFormat": "event {{event_id}}"
+        }
+      ]
+    },
+    {
+      "title": "Active Queue Events",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 4, "x": 20, "y": 37 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "expr": "ticketing_queue_active_events{application=\"ticketing\"}",
+          "legendFormat": "Active events"
+        }
+      ]
     }
   ],
   "refresh": "5s",

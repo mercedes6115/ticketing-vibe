@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ticketing Vibe Portfolio</title>
+  <meta
+    name="description"
+    content="실시간 티켓팅 시스템에서 대기열, 좌석 경합, 비동기 예약 확정을 어떻게 설계하고 검증했는지 정리한 포트폴리오 페이지">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <nav class="topbar">
+        <div class="brand">
+          <span class="brand-mark">TV</span>
+          <div>
+            <p class="eyebrow">Case Study</p>
+            <h1>Ticketing Vibe</h1>
+          </div>
+        </div>
+        <div class="topbar-links">
+          <a href="https://github.com/mercedes6115/ticketing-vibe" target="_blank" rel="noreferrer">GitHub</a>
+          <a href="https://github.com/mercedes6115/ticketing-vibe/blob/main/README.md" target="_blank" rel="noreferrer">README</a>
+          <a href="https://github.com/mercedes6115/ticketing-vibe/blob/main/docs/architecture.md" target="_blank" rel="noreferrer">Architecture</a>
+          <a href="https://github.com/mercedes6115/ticketing-vibe/blob/main/docs/performance-report.md" target="_blank" rel="noreferrer">Performance</a>
+        </div>
+      </nav>
+
+      <section class="hero-content">
+        <div class="hero-copy">
+          <p class="kicker">Real-time Queue Control / Seat Concurrency / Async Booking</p>
+          <h2>실시간 티켓팅에서 대기열, 좌석 선점, 예약 확정 흐름을 분리 설계하고 검증한 프로젝트</h2>
+          <p class="hero-summary">
+            이 프로젝트는 단순한 예매 CRUD가 아니라 동시 접속과 좌석 경합을 안전하게 처리하는 흐름을 만드는 데 집중했습니다.
+            Redis 기반 대기열, Redisson과 DB 락을 이용한 좌석 선점, Kafka 기반 비동기 예약 확정,
+            Prometheus와 Grafana를 이용한 운영 관측까지 하나의 흐름으로 정리했습니다.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="https://github.com/mercedes6115/ticketing-vibe" target="_blank" rel="noreferrer">저장소 보기</a>
+            <a class="button secondary" href="#screens">화면 살펴보기</a>
+          </div>
+        </div>
+        <aside class="hero-panel">
+          <p class="panel-label">핵심 지표</p>
+          <div class="metric-list">
+            <article class="metric">
+              <span class="metric-value">99.64%</span>
+              <span class="metric-label">confirm rate</span>
+            </article>
+            <article class="metric">
+              <span class="metric-value">16.57s</span>
+              <span class="metric-label">booking e2e p95</span>
+            </article>
+            <article class="metric">
+              <span class="metric-value">3.14s</span>
+              <span class="metric-label">queue wait p95</span>
+            </article>
+          </div>
+          <div class="stack-box">
+            <p class="panel-label">Stack</p>
+            <p>Spring Boot / Redis / Redisson / Kafka / MySQL / React / WebSocket / SSE / Prometheus / Grafana</p>
+          </div>
+        </aside>
+      </section>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Problem</p>
+          <h3>왜 이 프로젝트가 어려운가</h3>
+        </div>
+        <div class="problem-grid">
+          <article class="problem-card">
+            <h4>동시 접속</h4>
+            <p>예매 오픈 시점에는 많은 사용자가 동시에 진입합니다. 모든 요청을 즉시 좌석 선택으로 보내면 서비스와 사용자 경험이 모두 무너집니다.</p>
+          </article>
+          <article class="problem-card">
+            <h4>좌석 경합</h4>
+            <p>같은 좌석을 여러 사용자가 동시에 선택하려고 해도 중복 예약 없이 한 명만 선점하도록 보장해야 합니다.</p>
+          </article>
+          <article class="problem-card">
+            <h4>예약 확정 지연</h4>
+            <p>예약 확정은 DB 쓰기와 후속 작업이 얽혀 있어 무겁습니다. API 응답 경로와 분리하지 않으면 병목이 커집니다.</p>
+          </article>
+          <article class="problem-card">
+            <h4>상태 복구</h4>
+            <p>좌석 hold 만료, 중간 실패, 상태 전파 누락 같은 경계 조건도 설계 단계에서 처리해야 합니다.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section architecture">
+        <div class="section-heading">
+          <p class="eyebrow">Architecture</p>
+          <h3>핵심 설계 선택</h3>
+        </div>
+        <div class="decision-grid">
+          <article class="decision-card">
+            <h4>Queue: Redis Sorted Set + SSE</h4>
+            <p>대기 순서는 Redis Sorted Set으로 관리하고, 순번 갱신과 입장 가능 알림은 SSE로 전달했습니다.</p>
+          </article>
+          <article class="decision-card">
+            <h4>Seats: Redisson + DB Lock</h4>
+            <p>좌석 선점은 Redisson 분산 락과 DB 락을 함께 사용해 중복 점유를 막고, TTL 만료 후 자동 복구되도록 설계했습니다.</p>
+          </article>
+          <article class="decision-card">
+            <h4>Booking: Kafka Async Flow</h4>
+            <p>예약 요청은 빠르게 응답하고, 실제 확정은 Kafka consumer가 처리하도록 분리해 응답 경로의 부담을 줄였습니다.</p>
+          </article>
+          <article class="decision-card">
+            <h4>Observability: Prometheus + Grafana</h4>
+            <p>HTTP 지표, Kafka lag, JVM, HikariCP뿐 아니라 대기열 크기와 발급 토큰 수까지 운영 지표로 시각화했습니다.</p>
+          </article>
+        </div>
+        <div class="reference-links">
+          <a href="https://github.com/mercedes6115/ticketing-vibe/blob/main/docs/architecture.md" target="_blank" rel="noreferrer">아키텍처 문서</a>
+          <a href="https://github.com/mercedes6115/ticketing-vibe/blob/main/docs/service-flow.md" target="_blank" rel="noreferrer">서비스 흐름</a>
+          <a href="https://github.com/mercedes6115/ticketing-vibe/blob/main/docs/tradeoffs.md" target="_blank" rel="noreferrer">트레이드오프</a>
+          <a href="https://github.com/mercedes6115/ticketing-vibe/blob/main/ERD.md" target="_blank" rel="noreferrer">ERD</a>
+        </div>
+      </section>
+
+      <section class="section code-evidence">
+        <div class="section-heading">
+          <p class="eyebrow">Code Evidence</p>
+          <h3>설계 주장과 연결되는 핵심 코드</h3>
+        </div>
+        <div class="evidence-grid">
+          <a class="evidence-card" href="https://github.com/mercedes6115/ticketing-vibe/blob/main/backend/src/main/java/com/ticketing/service/QueueService.java" target="_blank" rel="noreferrer">
+            <span class="evidence-label">Queue</span>
+            <strong>QueueService</strong>
+            <p>대기열 진입, 토큰 발급, 자동 처리, 큐 메트릭 갱신을 담당합니다.</p>
+          </a>
+          <a class="evidence-card" href="https://github.com/mercedes6115/ticketing-vibe/blob/main/backend/src/main/java/com/ticketing/service/SeatService.java" target="_blank" rel="noreferrer">
+            <span class="evidence-label">Seats</span>
+            <strong>SeatService</strong>
+            <p>좌석 hold, release, 실시간 상태 브로드캐스트, 좌석 경합 제어를 다룹니다.</p>
+          </a>
+          <a class="evidence-card" href="https://github.com/mercedes6115/ticketing-vibe/blob/main/backend/src/main/java/com/ticketing/service/BookingService.java" target="_blank" rel="noreferrer">
+            <span class="evidence-label">Booking</span>
+            <strong>BookingService</strong>
+            <p>비동기 예약 흐름, Kafka publish, 상태 조회, 취소 처리를 담당합니다.</p>
+          </a>
+          <a class="evidence-card" href="https://github.com/mercedes6115/ticketing-vibe/blob/main/monitoring/grafana/dashboard-json/ticketing.json" target="_blank" rel="noreferrer">
+            <span class="evidence-label">Metrics</span>
+            <strong>Grafana Dashboard</strong>
+            <p>Queue Metrics, HTTP, Kafka, JVM, DB pool 패널 구성을 담고 있습니다.</p>
+          </a>
+        </div>
+      </section>
+
+      <section class="section" id="screens">
+        <div class="section-heading">
+          <p class="eyebrow">Screens</p>
+          <h3>사용자 흐름과 운영 화면</h3>
+        </div>
+        <div class="screen-grid">
+          <figure class="screen-card wide">
+            <img src="./screenshots/event-list/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-06-01%20161647.png" alt="이벤트 목록 화면">
+            <figcaption>
+              <strong>이벤트 목록</strong>
+              <p>이벤트 카드, 예매 상태, 잔여 좌석을 한눈에 보여주고 사용자가 예매 흐름으로 진입할 수 있게 구성했습니다.</p>
+            </figcaption>
+          </figure>
+
+          <figure class="screen-card">
+            <img src="./screenshots/event-detail/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-06-01%20161705.png" alt="이벤트 상세 화면">
+            <figcaption>
+              <strong>이벤트 상세</strong>
+              <p>공연 정보, 잔여 좌석, 예매 오픈 시각을 확인한 뒤 실제 예매 흐름으로 들어갑니다.</p>
+            </figcaption>
+          </figure>
+
+          <figure class="screen-card">
+            <img src="./screenshots/event-waiting/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-06-01%20164848.png" alt="대기열 대기 중 화면">
+            <figcaption>
+              <strong>대기열 대기 중</strong>
+              <p>현재 순번과 전체 대기 인원을 기준으로 아직 입장할 수 없는 상태를 명확하게 안내합니다.</p>
+            </figcaption>
+          </figure>
+
+          <figure class="screen-card">
+            <img src="./screenshots/event-waiting/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-06-01%20165018.png" alt="대기열 입장 가능 화면">
+            <figcaption>
+              <strong>입장 가능 상태</strong>
+              <p>토큰이 발급되면 사용자는 좌석 선택 단계로 이동할 수 있고, 진입 가능 상태가 별도로 표현됩니다.</p>
+            </figcaption>
+          </figure>
+
+          <figure class="screen-card wide">
+            <img src="./screenshots/event-seats/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-06-01%20161827.png" alt="좌석 선택 화면">
+            <figcaption>
+              <strong>좌석 선택</strong>
+              <p><code>AVAILABLE</code>, <code>HOLD</code>, <code>SOLD</code> 상태를 구분해 보여주고, 경합이 실시간으로 반영되도록 구성했습니다.</p>
+            </figcaption>
+          </figure>
+
+          <figure class="screen-card">
+            <img src="./screenshots/event-payment/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-06-01%20161848.png" alt="결제 화면">
+            <figcaption>
+              <strong>결제 화면</strong>
+              <p>선택한 좌석과 금액을 기준으로 예약 확정 요청을 보내고, 이후 확정 처리는 비동기 흐름으로 분리됩니다.</p>
+            </figcaption>
+          </figure>
+
+          <figure class="screen-card">
+            <img src="./screenshots/event-complete/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-06-01%20161925.png" alt="예매 완료 화면">
+            <figcaption>
+              <strong>예매 완료</strong>
+              <p>예약 번호, 좌석 정보, 금액, QR 영역까지 제공해 최종 결과를 사용자가 명확히 확인할 수 있게 했습니다.</p>
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="section validation">
+        <div class="section-heading">
+          <p class="eyebrow">Validation</p>
+          <h3>부하 테스트와 운영 지표</h3>
+        </div>
+        <div class="validation-grid">
+          <div class="results-table">
+            <div class="table-row head">
+              <span>단계</span>
+              <span>confirm rate</span>
+              <span>booking e2e p95</span>
+              <span>비고</span>
+            </div>
+            <div class="table-row">
+              <span>1차</span>
+              <span>82.78%</span>
+              <span>15.26s</span>
+              <span>병목 확인</span>
+            </div>
+            <div class="table-row">
+              <span>2차</span>
+              <span>96.01%</span>
+              <span>11.37s</span>
+              <span>좌석 흐름 조정</span>
+            </div>
+            <div class="table-row emph">
+              <span>최종</span>
+              <span>99.64%</span>
+              <span>16.57s</span>
+              <span>중복 체크 제거 후 안정화</span>
+            </div>
+          </div>
+
+          <figure class="dashboard-card">
+            <img
+              src="./screenshots/grafana-metric/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-06-01%20163830.png"
+              alt="Grafana Queue Metrics 대시보드">
+            <figcaption>
+              <strong>Queue Metrics Dashboard</strong>
+              <p>이벤트별 대기열 크기, 발급 토큰 수, 활성 대기열 이벤트 수를 Prometheus와 Grafana로 직접 확인할 수 있게 구성했습니다.</p>
+            </figcaption>
+          </figure>
+        </div>
+        <div class="reference-links">
+          <a href="https://github.com/mercedes6115/ticketing-vibe/blob/main/docs/performance-report.md" target="_blank" rel="noreferrer">성능 보고서</a>
+          <a href="https://github.com/mercedes6115/ticketing-vibe/blob/main/scripts/load-test-full-flow.js" target="_blank" rel="noreferrer">Full Flow Test</a>
+          <a href="https://github.com/mercedes6115/ticketing-vibe/blob/main/scripts/load-test-booking.js" target="_blank" rel="noreferrer">Booking Test</a>
+        </div>
+      </section>
+
+      <section class="section retrospective">
+        <div class="section-heading">
+          <p class="eyebrow">Retrospective</p>
+          <h3>한계와 다음 개선 포인트</h3>
+        </div>
+        <div class="retrospective-grid">
+          <article class="retrospective-card">
+            <h4>Polling 기반 예약 상태 확인</h4>
+            <p>예약 확정 상태는 현재 polling으로 조회합니다. 다음 단계에서는 SSE나 WebSocket 기반 상태 전파를 검토할 수 있습니다.</p>
+          </article>
+          <article class="retrospective-card">
+            <h4>운영 복잡도 증가</h4>
+            <p>Redis, Kafka, SSE, WebSocket을 함께 운영하는 만큼 로컬 검증에는 유리하지만 실제 운영 복잡도는 높아집니다.</p>
+          </article>
+          <article class="retrospective-card">
+            <h4>PG 연동 미구현</h4>
+            <p>현재 결제는 mock 처리입니다. 실제 PG 연동과 멱등성, 보상 트랜잭션까지 확장 검토가 필요합니다.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>개인 학습과 시스템 설계 검증을 위해 정리한 프로젝트</p>
+      <div class="footer-links">
+        <a href="https://github.com/mercedes6115/ticketing-vibe" target="_blank" rel="noreferrer">Repository</a>
+        <a href="https://github.com/mercedes6115/ticketing-vibe/blob/main/docs/api.md" target="_blank" rel="noreferrer">API Docs</a>
+        <a href="https://github.com/mercedes6115/ticketing-vibe/blob/main/docs/ai-usage.md" target="_blank" rel="noreferrer">AI Usage</a>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
