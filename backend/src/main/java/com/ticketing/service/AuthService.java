@@ -58,7 +58,6 @@ public class AuthService {
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
         String tokenKey = REFRESH_TOKEN_PREFIX + user.getId();
 
-        // DB 커밋 성공 후 저장 — 커밋 실패 시 7일 토큰 잔류 방지
         TransactionUtils.afterCommit(() -> redisTemplate.opsForValue().set(tokenKey, refreshToken, REFRESH_TOKEN_TTL));
 
         return TokenResponse.builder()
@@ -76,7 +75,7 @@ public class AuthService {
 
         Object failCount = redisTemplate.opsForValue().get(failKey);
         if (failCount != null && Integer.parseInt(failCount.toString()) >= MAX_FAIL_COUNT) {
-            throw new UnauthorizedException("로그인 시도 횟수를 초과했습니다. 15분 후 다시 시도해주세요.");
+            throw new UnauthorizedException("로그인 시도 횟수를 초과했습니다. 15분 후 다시 시도해 주세요.");
         }
 
         User user = userRepository.findByEmail(request.getEmail()).orElse(null);
@@ -84,7 +83,6 @@ public class AuthService {
         if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             Long count = redisTemplate.opsForValue().increment(failKey);
             if (count != null && count == 1) {
-                // 첫 실패 시에만 TTL 설정 — 이후 실패는 같은 창 안에서 누적
                 redisTemplate.expire(failKey, LOCKOUT_DURATION);
             }
             throw new UnauthorizedException("이메일 또는 비밀번호가 올바르지 않습니다.");

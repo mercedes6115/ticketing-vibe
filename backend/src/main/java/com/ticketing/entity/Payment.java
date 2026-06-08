@@ -51,15 +51,24 @@ public class Payment extends BaseEntity {
     }
 
     public void success() {
+        if (!isPending()) {
+            throw new IllegalStateException("대기 중인 결제만 성공 처리할 수 있습니다. status=" + status);
+        }
         this.status = PaymentStatus.SUCCESS;
         this.paidAt = LocalDateTime.now();
     }
 
     public void fail() {
+        if (!isPending()) {
+            throw new IllegalStateException("대기 중인 결제만 실패 처리할 수 있습니다. status=" + status);
+        }
         this.status = PaymentStatus.FAILED;
     }
 
     public void refund() {
+        if (!isSuccess()) {
+            throw new IllegalStateException("성공한 결제만 환불할 수 있습니다. status=" + status);
+        }
         this.status = PaymentStatus.REFUNDED;
     }
 

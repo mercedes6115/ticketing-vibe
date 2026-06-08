@@ -49,10 +49,16 @@ public class Booking extends BaseEntity {
     }
 
     public void confirm() {
+        if (!isPending()) {
+            throw new IllegalStateException("대기 중인 예매만 확정할 수 있습니다. status=" + status);
+        }
         this.status = BookingStatus.CONFIRMED;
     }
 
     public void cancel() {
+        if (isCancelled()) {
+            throw new IllegalStateException("이미 취소된 예매입니다.");
+        }
         this.status = BookingStatus.CANCELLED;
     }
 

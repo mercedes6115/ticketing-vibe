@@ -120,10 +120,9 @@ public class EventService {
             Files.createDirectories(filePath.getParent());
             file.transferTo(filePath);
         } catch (IOException e) {
-            throw new IllegalStateException("이미지 업로드에 실패했습니다: " + e.getMessage());
+            throw new IllegalStateException("이미지 업로드에 실패했습니다. " + e.getMessage());
         }
 
-        // DB 롤백 시 업로드한 파일 삭제 (고아 파일 방지)
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCompletion(int status) {
@@ -131,7 +130,7 @@ public class EventService {
                     try {
                         Files.deleteIfExists(filePath);
                     } catch (IOException e) {
-                        log.warn("고아 파일 삭제 실패: {}", filePath, e);
+                        log.warn("롤백 후 업로드 파일 삭제에 실패했습니다. path={}", filePath, e);
                     }
                 }
             }
@@ -148,7 +147,7 @@ public class EventService {
                 .orElseThrow(() -> NotFoundException.event(id));
 
         if (event.getStatus() == EventStatus.OPEN) {
-            throw new IllegalStateException("진행 중인 이벤트는 삭제할 수 없습니다");
+            throw new IllegalStateException("진행 중인 이벤트는 삭제할 수 없습니다.");
         }
 
         eventRepository.delete(event);

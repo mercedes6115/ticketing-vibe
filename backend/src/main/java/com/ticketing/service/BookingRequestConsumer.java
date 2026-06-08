@@ -2,6 +2,7 @@ package com.ticketing.service;
 
 import com.ticketing.dto.kafka.BookingEvent;
 import com.ticketing.dto.kafka.BookingRequestEvent;
+import com.ticketing.entity.enums.BookingProcessStatus;
 import com.ticketing.exception.NonRetryableBookingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,9 +15,6 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
-/**
- * Consumes booking requests from Kafka and persists the booking asynchronously.
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -52,7 +50,7 @@ public class BookingRequestConsumer {
             long persistMs = nanosToMillis(System.nanoTime() - persistStartedAtNanos);
 
             long statusUpdateStartedAtNanos = System.nanoTime();
-            redisTemplate.opsForValue().set(statusKey, "CONFIRMED", BookingService.BOOKING_STATUS_TTL);
+            redisTemplate.opsForValue().set(statusKey, BookingProcessStatus.CONFIRMED, BookingService.BOOKING_STATUS_TTL);
             long statusUpdateMs = nanosToMillis(System.nanoTime() - statusUpdateStartedAtNanos);
 
             long consumerWorkMs = nanosToMillis(System.nanoTime() - consumerStartedAtNanos);
@@ -68,7 +66,7 @@ public class BookingRequestConsumer {
                     totalAsyncMs
             );
         } catch (NonRetryableBookingException e) {
-            redisTemplate.opsForValue().set(statusKey, "FAILED", BookingService.BOOKING_STATUS_TTL);
+            redisTemplate.opsForValue().set(statusKey, BookingProcessStatus.FAILED, BookingService.BOOKING_STATUS_TTL);
             log.warn(
                     "[BookingRequestConsumer] failed(non-retryable): bookingNo={}, queueDelayMs={}, error={}",
                     requestEvent.getBookingNo(),

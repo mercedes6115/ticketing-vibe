@@ -49,14 +49,23 @@ public class Seat extends BaseEntity {
     }
 
     public void hold() {
+        if (!isAvailable()) {
+            throw new IllegalStateException("예매 가능한 좌석만 점유할 수 있습니다. status=" + status);
+        }
         this.status = SeatStatus.HOLD;
     }
 
     public void release() {
+        if (isAvailable()) {
+            throw new IllegalStateException("이미 예매 가능한 좌석입니다.");
+        }
         this.status = SeatStatus.AVAILABLE;
     }
 
     public void sell() {
+        if (!isHold()) {
+            throw new IllegalStateException("점유 중인 좌석만 판매할 수 있습니다. status=" + status);
+        }
         this.status = SeatStatus.SOLD;
     }
 

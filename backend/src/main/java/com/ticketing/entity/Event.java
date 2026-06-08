@@ -59,6 +59,9 @@ public class Event extends BaseEntity {
     public Event(String title, String description, String venue, String imageUrl,
                  LocalDateTime startAt, LocalDateTime openAt, EventStatus status,
                  Integer totalSeats) {
+        validateSchedule(startAt, openAt);
+        validateTotalSeats(totalSeats);
+
         this.title = title;
         this.description = description;
         this.venue = venue;
@@ -66,8 +69,8 @@ public class Event extends BaseEntity {
         this.startAt = startAt;
         this.openAt = openAt;
         this.status = status != null ? status : EventStatus.SCHEDULED;
-        this.totalSeats = totalSeats != null ? totalSeats : 0;
-        this.availableSeats = this.totalSeats;
+        this.totalSeats = totalSeats;
+        this.availableSeats = totalSeats;
     }
 
     public void updateStatus(EventStatus status) {
@@ -84,11 +87,42 @@ public class Event extends BaseEntity {
 
     public void update(String title, String description, String venue, String imageUrl,
                        LocalDateTime startAt, LocalDateTime openAt) {
-        if (title != null) this.title = title;
-        if (description != null) this.description = description;
-        if (venue != null) this.venue = venue;
-        if (imageUrl != null) this.imageUrl = imageUrl;
-        if (startAt != null) this.startAt = startAt;
-        if (openAt != null) this.openAt = openAt;
+        LocalDateTime nextStartAt = startAt != null ? startAt : this.startAt;
+        LocalDateTime nextOpenAt = openAt != null ? openAt : this.openAt;
+        validateSchedule(nextStartAt, nextOpenAt);
+
+        if (title != null) {
+            this.title = title;
+        }
+        if (description != null) {
+            this.description = description;
+        }
+        if (venue != null) {
+            this.venue = venue;
+        }
+        if (imageUrl != null) {
+            this.imageUrl = imageUrl;
+        }
+        if (startAt != null) {
+            this.startAt = startAt;
+        }
+        if (openAt != null) {
+            this.openAt = openAt;
+        }
+    }
+
+    private void validateSchedule(LocalDateTime startAt, LocalDateTime openAt) {
+        if (startAt == null || openAt == null) {
+            throw new IllegalArgumentException("공연 시작 시간과 예매 오픈 시간은 필수입니다.");
+        }
+        if (openAt.isAfter(startAt)) {
+            throw new IllegalArgumentException("예매 오픈 시간은 공연 시작 시간보다 늦을 수 없습니다.");
+        }
+    }
+
+    private void validateTotalSeats(Integer totalSeats) {
+        if (totalSeats == null || totalSeats < 1) {
+            throw new IllegalArgumentException("총 좌석 수는 1 이상이어야 합니다.");
+        }
     }
 }

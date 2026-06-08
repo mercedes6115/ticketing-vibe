@@ -18,7 +18,6 @@ public class PaymentResponse {
     private Integer amount;
     private PaymentMethod method;
     private PaymentStatus status;
-    private String idempotencyKey;
     private LocalDateTime paidAt;
     private LocalDateTime createdAt;
 
@@ -30,7 +29,6 @@ public class PaymentResponse {
                 .amount(payment.getAmount())
                 .method(payment.getMethod())
                 .status(payment.getStatus())
-                .idempotencyKey(payment.getIdempotencyKey())
                 .paidAt(payment.getPaidAt())
                 .createdAt(payment.getCreatedAt())
                 .build();
