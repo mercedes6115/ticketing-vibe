@@ -154,6 +154,43 @@
 
       <section class="section">
         <div class="section-heading">
+          <p class="eyebrow">Before / After</p>
+          <h3>개선 전과 개선 후를 어떻게 비교할 수 있나</h3>
+        </div>
+        <div class="comparison-grid">
+          <article class="comparison-card before">
+            <p class="comparison-label">개선 전</p>
+            <h4>문제가 한 경로에 겹쳐 있었다</h4>
+            <ul class="comparison-list">
+              <li>사용자가 예매 화면으로 바로 진입해 좌석 경쟁 구간까지 요청이 한꺼번에 몰린다.</li>
+              <li>같은 좌석에 대한 경쟁이 조회 후 업데이트 구간에서만 충돌한다.</li>
+              <li>예약 확정과 후속 처리가 요청-응답 경로 안에 함께 묶여 있다.</li>
+              <li>실패하거나 이탈한 요청이 좌석 hold 상태를 오래 남길 수 있다.</li>
+            </ul>
+          </article>
+
+          <article class="comparison-card after">
+            <p class="comparison-label">개선 후</p>
+            <h4>병목을 구간별로 분리해 다루게 됐다</h4>
+            <ul class="comparison-list">
+              <li>대기열이 좌석 선택 단계로 들어가는 요청 수 자체를 먼저 제어한다.</li>
+              <li>좌석은 상태 전이 직전 임계 구간을 분산 락으로 보호한다.</li>
+              <li>예약 확정은 Kafka consumer가 처리해 사용자 응답과 분리된다.</li>
+              <li>TTL 기반 만료와 복구 흐름이 실패 상태를 자동으로 정리한다.</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="article-flow comparison-explain">
+          <article class="article-block">
+            <h4>비교의 핵심은 속도보다 구조적 분리였다</h4>
+            <p>이 비교에서 중요한 것은 단순히 평균 시간이 줄었는가만이 아닙니다. 개선 전에는 모든 문제가 하나의 요청 경로에 겹쳐 있었고, 개선 후에는 진입 제어, 경쟁 보호, 비동기 확정, 실패 복구가 각각 다른 계층에서 다뤄지게 됐습니다. 즉, 성능 최적화 이전에 병목을 해석 가능한 구조로 분리한 것이 가장 큰 변화였습니다.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
           <p class="eyebrow">Code Evidence</p>
           <h3>이 설계는 코드에서 어디에 드러나는가</h3>
         </div>
@@ -183,12 +220,51 @@
 
       <section class="section">
         <div class="section-heading">
+          <p class="eyebrow">Load Profile</p>
+          <h3>어느 정도 부하에서 이 병목을 관찰했나</h3>
+        </div>
+        <div class="article-flow">
+          <article class="article-block">
+            <p>이 페이지의 비교와 해석은 임의의 트래픽이 아니라, `main` 브랜치에 있는 k6 테스트 스크립트와 성능 보고서 기준으로 정리했습니다. 대표 시나리오는 대기열부터 좌석 선택, 예매 완료까지 전체 흐름을 재현하는 `load-test-full-flow.js`였고, 보조 시나리오는 예매 확정 경로만 분리해 보는 `load-test-booking.js`였습니다.</p>
+          </article>
+        </div>
+        <div class="validation-grid">
+          <div class="results-table">
+            <div class="table-row head">
+              <span>시나리오</span>
+              <span>동시 부하</span>
+              <span>총 요청 규모</span>
+              <span>데이터 조건</span>
+            </div>
+            <div class="table-row">
+              <span>대표 시나리오</span>
+              <span>VUs 150</span>
+              <span>Iterations 1000</span>
+              <span>사용자 1000명 / 좌석 200개 또는 500개 / 이벤트 1개</span>
+            </div>
+            <div class="table-row">
+              <span>보조 시나리오</span>
+              <span>VUs 200</span>
+              <span>Iterations 1000</span>
+              <span>예매 확정 경로만 분리 측정 / 사전 hold 데이터 사용</span>
+            </div>
+          </div>
+
+          <div class="callout">
+            <p class="callout-label">중요한 점</p>
+            <p>1차와 2차 비교는 같은 사용자 1000명 기준으로 진행했지만, 좌석 수가 `200개 -> 500개`로 달라집니다. 그래서 초기 결과는 시스템 병목만이 아니라 좌석 부족 조건도 함께 섞여 있었고, 이후 비교에서 그 영향을 분리해 해석해야 했습니다.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
           <p class="eyebrow">Validation</p>
           <h3>무엇이 실제로 개선됐는가</h3>
         </div>
         <div class="article-flow">
           <article class="article-block">
-            <p>이 프로젝트의 목표는 기능 동작 여부보다, 경쟁 상황에서도 상태가 무너지지 않는지 확인하는 것이었습니다. 따라서 수집한 수치는 단순한 성능 자랑이 아니라, 각 설계 선택이 실제로 어느 병목을 줄였는지 해석하기 위한 근거로 사용했습니다.</p>
+            <p>이 프로젝트의 목표는 기능 동작 여부보다, 경쟁 상황에서도 상태가 무너지지 않는지 확인하는 것이었습니다. 따라서 수집한 수치는 단순한 성능 자랑이 아니라, 각 설계 선택이 실제로 어느 병목을 줄였는지 해석하기 위한 근거로 사용했습니다. 특히 비교하고 싶었던 것은 "더 빨라졌는가"보다 "이제 어느 구간이 병목인지 구분해서 볼 수 있는가"였습니다.</p>
           </article>
         </div>
         <div class="validation-grid">
@@ -203,25 +279,25 @@
               <span>1차</span>
               <span>82.78%</span>
               <span>15.26s</span>
-              <span>동기 처리와 좌석 경쟁 구간의 병목이 먼저 드러남</span>
+              <span>대기 제어와 확정 분리가 약해 병목이 하나의 경로에 겹쳐 보임</span>
             </div>
             <div class="table-row">
               <span>2차</span>
               <span>96.01%</span>
               <span>11.37s</span>
-              <span>좌석 상태 전이와 요청 흐름을 조정하며 성공률 개선</span>
+              <span>좌석 상태 전이와 요청 흐름을 조정하며 경쟁 구간이 더 명확해짐</span>
             </div>
             <div class="table-row emph">
               <span>최종</span>
               <span>99.64%</span>
               <span>16.57s</span>
-              <span>일관성 강화를 우선하며 중복 체크를 보강, 완료 시간은 별도 관측 대상으로 분리</span>
+              <span>일관성 강화를 우선하며 응답 경로와 완료 경로를 별도 대상으로 해석 가능해짐</span>
             </div>
           </div>
 
           <div class="callout">
             <p class="callout-label">해석</p>
-            <p>가장 중요한 변화는 단일 수치가 아니라 병목을 분리해 볼 수 있게 됐다는 점입니다. 대기열은 진입 폭주를 줄였고, 분산 락은 좌석 경쟁 구간을 보호했으며, Kafka는 응답 경로와 확정 경로를 분리했습니다. 그 결과 사용자가 체감하는 흐름과 백엔드 내부 처리 흐름을 별도로 해석할 수 있는 구조가 생겼습니다.</p>
+            <p>가장 중요한 변화는 단일 수치가 아니라 병목을 분리해 볼 수 있게 됐다는 점입니다. 대기열은 진입 폭주를 줄였고, 분산 락은 좌석 경쟁 구간을 보호했으며, Kafka는 응답 경로와 확정 경로를 분리했습니다. 그 결과 "왜 느린가"를 하나의 원인으로 설명하던 상태에서, 어떤 구간이 지연을 만들고 어떤 구간이 일관성을 지키는지 나눠 해석할 수 있는 구조가 생겼습니다.</p>
           </div>
         </div>
       </section>

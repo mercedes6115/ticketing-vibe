@@ -314,6 +314,53 @@ code {
   font-weight: 600;
 }
 
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.comparison-card {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: #fff;
+}
+
+.comparison-card.before {
+  background: linear-gradient(180deg, #fff 0%, #fff7f7 100%);
+}
+
+.comparison-card.after {
+  background: linear-gradient(180deg, #fff 0%, #f4fffd 100%);
+}
+
+.comparison-label {
+  margin: 0 0 10px;
+  color: var(--accent);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.comparison-card h4 {
+  margin: 0 0 14px;
+  font-size: 1.14rem;
+  line-height: 1.5;
+}
+
+.comparison-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  line-height: 1.85;
+}
+
+.comparison-explain {
+  margin-top: 20px;
+}
+
 .evidence-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -394,7 +441,8 @@ code {
 @media (max-width: 900px) {
   .hero-content,
   .validation-grid,
-  .evidence-grid {
+  .evidence-grid,
+  .comparison-grid {
     grid-template-columns: 1fr;
   }
 }
